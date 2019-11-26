@@ -6,15 +6,15 @@ prev: concurrent-mode-suspense.html
 next: concurrent-mode-adoption.html
 ---
 
->Caution:
+>警告：
 >
->This page describes **experimental features that are [not yet available](/docs/concurrent-mode-adoption.html) in a stable release**. Don't rely on experimental builds of React in production apps. These features may change significantly and without a warning before they become a part of React.
+> このページでは**安定リリースで[まだ利用できない](/docs/concurrent-mode-adoption.html)実験的機能**を説明しています。本番のアプリケーションで React の実験的ビルドを利用しないでください。これらの機能は React の一部となる前に警告なく大幅に変更される可能性があります。
 >
->This documentation is aimed at early adopters and people who are curious. If you're new to React, don't worry about these features -- you don't need to learn them right now.
+> このドキュメントは興味のある読者やアーリーアダプター向けのものです。React が初めての方はこれらの機能を気にしないで構いません -- 今すぐに学ぶ必要はありません。
 
-Usually, when we update the state, we expect to see changes on the screen immediately. This makes sense because we want to keep our app responsive to user input. However, there are cases where we might prefer to **defer an update from appearing on the screen**.
+通常、state を更新した場合、画面に即座に変化が現れることを期待します。ユーザ入力に対してアプリケーションをレスポンシブに保ちたいので、これは理に適っています。しかし、**画面に更新が現れるのを遅延**させたい場合があります。
 
-For example, if we switch from one page to another, and none of the code or data for the next screen has loaded yet, it might be frustrating to immediately see a blank page with a loading indicator. We might prefer to stay longer on the previous screen. Implementing this pattern has historically been difficult in React. Concurrent Mode offers a new set of tools to do that.
+例えば、ある画面から別の画面に切り替えたいが、次の画面に必要なコードやデータが何もロードされていないという場合、切り替え直後にロード中のインジケータのある空のページを見るのはいらだたしいものです。前の画面にもうしばらく残りたいと思うでしょう。歴史的に React ではこのパターンの実装は困難でした。並列モードはこれを行うための新たなツール群を提供します。
 
 - [Transitions](#transitions)
   - [Wrapping setState in a Transition](#wrapping-setstate-in-a-transition)
@@ -36,17 +36,17 @@ For example, if we switch from one page to another, and none of the code or data
   - [SuspenseList](#suspenselist)
 - [Next Steps](#next-steps)
 
-## Transitions {#transitions}
+## トランジション {#transitions}
 
-Let's revisit [this demo](https://codesandbox.io/s/infallible-feather-xjtbu) from the previous page about [Suspense for Data Fetching](/docs/concurrent-mode-suspense.html).
+前のページ [Suspense for Data Fetching](/docs/concurrent-mode-suspense.html) にある[こちらのデモ](https://codesandbox.io/s/infallible-feather-xjtbu)について改めて考えましょう。
 
-When we click the "Next" button to switch the active profile, the existing page data immediately disappears, and we see the loading indicator for the whole page again. We can call this an "undesirable" loading state. **It would be nice if we could "skip" it and wait for some content to load before transitioning to the new screen.**
+"Next" ボタンをクリックしてアクティブなプロフィールを切り替えた際、既存のページデータは即座に消えて、新しい画面のためのローディングインジケータを見ることになります。これは「望ましくない」ローディング中状態と呼べるでしょう。**新しい画面に遷移する前に新しいコンテンツを待ち、これをスキップすることができれば良さそうです。**
 
-React offers a new built-in `useTransition()` Hook to help with this.
+React はこれを補助するたに `useTransition()` という新しい組み込みフックを提供します。
 
-We can use it in three steps.
+これは以下の 3 ステップで利用できます。
 
-First, we'll make sure that we're actually using Concurrent Mode. We'll talk more about [adopting Concurrent Mode](/docs/concurrent-mode-adoption.html) later, but for now it's sufficient to know that we need to use `ReactDOM.createRoot()` rather than `ReactDOM.render()` for this feature to work:
+まず、実際に並列モードを利用していることを確かめます。後で[並列モードの利用開始](/docs/concurrent-mode-adoption.html)方法については述べますが、今の所は `ReactDOM.render()` の代わりに `ReactDOM.createRoot()` を使うことでこの機能が使えるということを知っていれば十分です。
 
 ```js
 const rootElement = document.getElementById("root");
@@ -54,13 +54,13 @@ const rootElement = document.getElementById("root");
 ReactDOM.createRoot(rootElement).render(<App />);
 ```
 
-Next, we'll add an import for the `useTransition` Hook from React:
+次に、React から `useTransition` フックをインポートする文を追加します：
 
 ```js
 import React, { useState, useTransition, Suspense } from "react";
 ```
 
-Finally, we'll use it inside the `App` component:
+最後に、`App` コンポーネント内でそれを利用します：
 
 ```js{3-5}
 function App() {
@@ -71,18 +71,18 @@ function App() {
   // ...
 ```
 
-**By itself, this code doesn't do anything yet.** We will need to use this Hook's return values to set up our state transition. There are two values returned from `useTransition`:
+**このコードはそれ自体ではまだ何もしません。**このフックの戻り値を使って state の遷移をセットアップします。`useTransition` からの戻り値は 2 つです：
 
-* `startTransition` is a function. We'll use it to tell React *which* state update we want to defer.
-* `isPending` is a boolean. It's React telling us whether that transition is ongoing at the moment.
+* `startTransition` は関数です。これを使って、*どの* state の更新を遅延させたいのかを React に伝えます。
+* `isPending` は真偽値です。React はこれを使って現在トランジションが進行中かどうかを伝えます。
 
-We will use them right below.
+このすぐ後で使ってみます。
 
-Note we passed a configuration object to `useTransition`. Its `timeoutMs` property specifies **how long we're willing to wait for the transition to finish**. By passing `{timeoutMs: 3000}`, we say "If the next profile takes more than 3 seconds to load, show the big spinner -- but before that timeout it's okay to keep showing the previous screen".
+`useTransition` に設定オブジェクトを渡したことに気をつけてください。この `timeoutMs` プロパティで**遷移が終了するまでどれだけ待てるか**を指定します。`{timeoutMs: 3000}` を渡すことで、「次のプロフィール画面がロードされるのに 3 秒以上かかったら、大きなスピナーを表示せよ、ただしそれまでは前の画面を表示しつづけていて構わない」ということを伝えています。
 
-### Wrapping setState in a Transition {#wrapping-setstate-in-a-transition}
+### トランジション内で setState をラップする {#wrapping-setstate-in-a-transition}
 
-Our "Next" button click handler sets the state that switches the current profile in the state:
+"Next" ボタンのクリックハンドラーは、現在のプロフィールを切り替えるための state を設定しています：
 
 ```js{4}
 <button
@@ -93,7 +93,7 @@ Our "Next" button click handler sets the state that switches the current profile
 >
 ```
 
- We'll wrap that state update into `startTransition`. That's how we tell React **we don't mind React delaying that state update** if it leads to an undesirable loading state:
+このステートの更新を `startTransition` でラップします。これが、もしこのステートの更新が望ましくないローディング中状態を引き起こすのであれば、**React によって遅らされても構わない**、と伝える方法です：
 
 ```js{3,6}
 <button
@@ -106,13 +106,13 @@ Our "Next" button click handler sets the state that switches the current profile
 >
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/musing-driscoll-6nkie)**
+**[CodeSandbox で試す](https://codesandbox.io/s/musing-driscoll-6nkie)**
 
-Press "Next" a few times. Notice it already feels very different. **Instead of immediately seeing an empty screen on click, we now keep seeing the previous page for a while.** When the data has loaded, React transitions us to the new screen.
+何度か "Next" を押してみましょう。既に大きく違っていることが分かるでしょう。**クリックの直後に空の画面を見させられる代わりに、しばらくは前のページが表示され続けます。**データがロードされたら、React が次の画面に遷移します。
 
-If we make our API responses take 5 seconds, [we can confirm](https://codesandbox.io/s/relaxed-greider-suewh) that now React "gives up" and transitions anyway to the next screen after 3 seconds. This is because we passed `{timeoutMs: 3000}` to `useTransition()`. For example, if we passed `{timeoutMs: 60000}` instead, it would wait a whole minute.
+もし API のレスポンスが 5 秒かかるように変えると、React は 3 秒後に「諦めて」ともかく画面の遷移を行うことが[確認できます](https://codesandbox.io/s/relaxed-greider-suewh)。これは `useTransition()` に `{timeoutMs: 3000}` を渡したからです。もし `{timeoutMs: 60000}` を代わりに渡したら、丸々 1 分間待つことになるでしょう。
 
-### Adding a Pending Indicator {#adding-a-pending-indicator}
+### 保留中インジケータの追加 {#adding-a-pending-indicator}
 
 There's still something that feels broken about [our last example](https://codesandbox.io/s/musing-driscoll-6nkie). Sure, it's nice not to see a "bad" loading state. **But having no indication of progress at all feels even worse!** When we click "Next", nothing happens and it feels like the app is broken.
 
@@ -122,7 +122,7 @@ Our `useTransition()` call returns two values: `startTransition` and `isPending`
   const [startTransition, isPending] = useTransition({ timeoutMs: 3000 });
 ```
 
-We've already used `startTransition` to wrap the state update. Now we're going to use `isPending` too. React gives this boolean to us so we can tell whether **we're currently waiting for this transition to finish**. We'll use it to indicate that something is happening:
+`useTransition` はもう使っています。ここで `isPending` も使うようにします。React がこの真偽値を渡してくれることで、**このトランジションの終了を待っているところかどうか**が分かります。何かが起こっているということを示すためにこれを使いましょう：
 
 ```js{4,14}
 return (
@@ -144,13 +144,13 @@ return (
 );
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/jovial-lalande-26yep)**
+**[CodeSandbox で試す](https://codesandbox.io/s/jovial-lalande-26yep)**
 
-Now, this feels a lot better! When we click Next, it gets disabled because clicking it multiple times doesn't make sense. And the new "Loading..." tells the user that the app didn't freeze.
+ずっと良くなりました！ Next をクリックした際に、何度も押しても意味がないのでボタンが無効化されます。そして新たに表示される "Loading..." がユーザにアプリケーションがフリーズしていないということを伝えています。
 
-### Reviewing the Changes {#reviewing-the-changes}
+### 変更のおさらい {#reviewing-the-changes}
 
-Let's take another look at all the changes we've made since the [original example](https://codesandbox.io/s/infallible-feather-xjtbu):
+[元の例](https://codesandbox.io/s/infallible-feather-xjtbu)以降に行った変更をもう一度すべて見てみましょう：
 
 ```js{3-5,9,11,14,19}
 function App() {
@@ -178,40 +178,40 @@ function App() {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/jovial-lalande-26yep)**
+**[CodeSandbox で試す](https://codesandbox.io/s/jovial-lalande-26yep)**
 
-It took us only seven lines of code to add this transition:
+このトランジションを加えるのに必要だったコードはわずか 7 行でした。
 
-* We've imported the `useTransition` Hook and used it the component that updates the state.
-* We've passed `{timeoutMs: 3000}` to stay on the previous screen for at most 3 seconds.
-* We've wrapped our state update into `startTransition` to tell React it's okay to delay it.
-* We're using `isPending` to communicate the state transition progress to the user and to disable the button.
+* `useTransition` フックをインポートして、state を更新するコンポーネント内で使いました。
+* `{timeoutMs: 3000}` を渡すことで、最高 3 秒間は前の画面に留まるようにしました。
+* state の更新を `startTransition` でラップし、この更新は遅延可能であると伝えました。
+* `isPending` を使って、ユーザにトランジションの進行状況を伝えるとともに、ボタンを無効化しました。
 
-As a result, clicking "Next" doesn't perform an immediate state transition to an "undesirable" loading state, but instead stays on the previous screen and communicates progress there.
+結果として、"Next" をクリックしても「望ましくない」ローディング中状態に直接遷移するのではなく、前の画面に留まってユーザに進行状況を伝えるようになりました。
 
-### Where Does the Update Happen? {#where-does-the-update-happen}
+### 更新はどこで起こるのか？ {#where-does-the-update-happen}
 
-This wasn't very difficult to implement. However, if you start thinking about how this could possibly work, it might become a little mindbending. If we set the state, how come we don't see the result right away? *Where* is the next `<ProfilePage>` rendering?
+これを実装するのはあまり難しくありませんでした。しかしこれがどうやって動作しているのかを考え始めると、ちょっと混乱しそうになります。state を設定したのに、なぜその結果がすぐ現れなかったのでしょうか。次の `<ProfilePage>` は*どこで*レンダーされているのでしょうか？
 
-Clearly, both "versions" of `<ProfilePage>` exist at the same time. We know the old one exists because we see it on the screen and even display a progress indicator on it. And we know the new version also exists *somewhere*, because it's the one that we're waiting for!
+明らかに、`<ProfilePage>` の両方の「バージョン」が同時に存在しているのです。古いバージョンが存在していることは、画面に表示されており進行中のインジケータまで表示しているということから分かります。また新しいバージョンが*どこかに*存在しているということも分かります。まさにそれが完了するのを待っているのですから！
 
-**But how can two versions of the same component exist at the same time?**
+**ですが、同じコンポーネントの 2 つのバージョンが何故同時に存在しているのでしょうか？**
 
-This gets at the root of what Concurrent Mode is. We've [previously said](/docs/concurrent-mode-intro.html#intentional-loading-sequences) it's a bit like React working on state update on a "branch". Another way we can conceptualize is that wrapping a state update in `startTransition` begins rendering it *"in a different universe"*, much like in science fiction movies. We don't "see" that universe directly -- but we can get a signal from it that tells us something is happening (`isPending`). When the update is ready, our "universes" merge back together, and we see the result on the screen!
+これが並列モードの根底にあたる部分です。これは React が state の更新を「ブランチ」で行っているようなものだと[以前述べました](/docs/concurrent-mode-intro.html#intentional-loading-sequences)。これを概念化する別の方法として、`startTransition` で state の更新をラップすることで、SF 映画のごとくレンダーが*「別の宇宙で」*始まるのだと考えることができます。その宇宙を直接「観測する」ことはできません -- しかしその宇宙からは何かが起きているという信号 (`isPending`) を得ることはできます。更新の準備が完了したところで、「2 つの宇宙」がマージされ、画面に結果が表示されます！
 
-Play a bit more with the [demo](https://codesandbox.io/s/jovial-lalande-26yep), and try to imagine it happening.
+[デモ](https://codesandbox.io/s/jovial-lalande-26yep)で遊んでみて、そのようなことが起きているところを想像してみてください。
 
-Of course, two versions of the tree rendering *at the same time* is an illusion, just like the idea that all programs run on your computer at the same time is an illusion. An operating system switches between different applications very fast. Similarly, React can switch between the version of the tree you see on the screen and the version that it's "preparing" to show next.
+もちろん、ツリーの 2 つのバージョンが*同時に*レンダーされているというのは幻覚であり、それはあなたのコンピュータ上のプログラムが全部同時に実行されていると考えることが幻覚であるのと同じです。オペレーティング・システムは複数のアプリケーションを非常に素早く切り替えているのです。同様に React は、画面上に見えているツリーのバージョンと、次に表示されるために「準備中」のバージョンとを切り替えています。
 
-An API like `useTransition` lets you focus on the desired user experience, and not think about the mechanics of how it's implemented. Still, it can be a helpful metaphor to imagine that updates wrapped in `startTransition` happen "on a branch" or "in a different world".
+`useTransition` のような API を使うことで、望ましいユーザ体験に集中でき、それがどのような仕組みで実現されているのかについて気にしないでよくなります。それでも、`startTransition` でラップした更新が「ブランチ」や「別世界」で起こっていると想像するのは例え話としては便利です。
 
-### Transitions Are Everywhere {#transitions-are-everywhere}
+### トランジションは至る所にある {#transitions-are-everywhere}
 
-As we learned from the [Suspense walkthrough](/docs/concurrent-mode-suspense.html), any component can "suspend" any time if some data it needs is not ready yet. We can strategically place `<Suspense>` boundaries in different parts of the tree to handle this, but it won't always be enough.
+[サスペンスの解説](/docs/concurrent-mode-suspense.html)で学んだ通り、コンポーネントはそれが必要とするデータがまだ準備できていない場合にいつでも「サスペンド」することができます。計画的にツリー内の様々な場所に `<Suspense>` バウンダリを配置することでこれを制御できますが、それでは十分でないことがあります。
 
-Let's get back to our [first Suspense demo](https://codesandbox.io/s/frosty-hermann-bztrp) where there was just one profile. Currently, it fetches the data only once. We'll add a "Refresh" button to check for server updates.
+プロフィールが 1 つだけだった最初の[サスペンスのデモ](https://codesandbox.io/s/frosty-hermann-bztrp)に戻りましょう。今のところはデータを 1 回だけ取得しています。サーバ側に更新があるかを確認する "Refresh" ボタンを追加しましょう。
 
-Our first attempt might look like this:
+まずはこのようにしてみました：
 
 ```js{6-8,13-15}
 const initialResource = fetchUserAndPosts();
@@ -237,13 +237,13 @@ function ProfilePage() {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/boring-shadow-100tf)**
+**[CodeSandbox で試す](https://codesandbox.io/s/boring-shadow-100tf)**
 
-In this example, we start data fetching at the load *and* every time you press "Refresh". We put the result of calling `fetchUserAndPosts()` into state so that components below can start reading the new data from the request we just kicked off.
+この例では、ロード時**および** "Refresh" を押下する度に、データ取得が開始されます。`fetchUserAndPosts()` を呼び出した結果を state 内に入れることで、配下のコンポーネントがたった今開始したリクエストから新しいデータを読み出せるようにします。
 
-We can see in [this example](https://codesandbox.io/s/boring-shadow-100tf) that pressing "Refresh" works. The `<ProfileDetails>` and `<ProfileTimeline>` components receive a new `resource` prop that represents the fresh data, they "suspend" because we don't have a response yet, and we see the fallbacks. When the response loads, we can see the updated posts (our fake API adds them every 3 seconds).
+[こちら](https://codesandbox.io/s/boring-shadow-100tf)で試せるとおり、"Refresh" ボタンの押下は動作はしています。`<ProfileDetails>` と `<ProfileTimeline>` コンポーネントは新しいデータを表す `resource` を props として受け取り、レスポンスがまだ存在しないため「サスペンド」し、フォールバックが表示されます。レスポンスがロードされると、更新された投稿を見ることができます（このフェイク API は 3 秒ごとに投稿を追加するようになっています）。
 
-However, the experience feels really jarring. We were browsing a page, but it got replaced by a loading state right as we were interacting with it. It's disorienting. **Just like before, to avoid showing an undesirable loading state, we can wrap the state update in a transition:**
+しかしながらユーザ体験はとても煩わしいものとなっています。ページをブラウズしたのに、操作した瞬間にローディング中状態で置き換わってしまうのです。これはユーザを混乱させます。**これまでと同様に、望ましくないローディング中状態を回避するために、state の更新をトランジションでラップできます：**
 
 ```js{2-5,9-11,21}
 function ProfilePage() {
@@ -276,15 +276,15 @@ function ProfilePage() {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/sleepy-field-mohzb)**
+**[CodeSandbox で試す](https://codesandbox.io/s/sleepy-field-mohzb)**
 
-This feels a lot better! Clicking "Refresh" doesn't pull us away from the page we're browsing anymore. We see something is loading "inline", and when the data is ready, it's displayed.
+ずっと良く感じられます！ "Refresh" をクリックすることで今ブラウズしていたページから引き離されることがなくなりました。何かがロード中であると「インライン」で見ることができ、データの準備が完了したらそれが表示されます。
 
-### Baking Transitions Into the Design System {#baking-transitions-into-the-design-system}
+### トランジションをデザインシステムに組み込む {#baking-transitions-into-the-design-system}
 
-We can now see that the need for `useTransition` is *very* common. Pretty much any button click or interaction that can lead to a component suspending needs to be wrapped in `useTransition` to avoid accidentally hiding something the user is interacting with.
+これで `useTransition` の要求は*非常に*よくあるものであることが分かったでしょう。コンポーネントのサスペンドを引き起こすような、ほぼあらゆるボタンクリックやユーザ操作は、`useTransition` でラップして、ユーザが触っていたものをうっかり隠さないようにする必要があります。
 
-This can lead to a lot of repetitive code across components. This is why **we generally recommend to bake `useTransition` into the *design system* components of your app**. For example, we can extract the transition logic into our own `<Button>` component:
+これはコンポーネント間で多くのコードの繰り返しを引き起こす可能性があります。このため、**`useTransition` を*デザインシステム*コンポーネントに組み込む**ことをお勧めします。例えば、トランジションのロジックを独自の `<Button>` コンポーネントに抽出することができます。
 
 ```js{7-9,20,24}
 function Button({ children, onClick }) {
@@ -316,9 +316,9 @@ function Button({ children, onClick }) {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/modest-ritchie-iufrh)**
+**[CodeSandbox で試す](https://codesandbox.io/s/modest-ritchie-iufrh)**
 
-Note that the button doesn't care *what* state we're updating. It's wrapping *any* state updates that happen during its `onClick` handler into a transition. Now that our `<Button>` takes care of setting up the transition, the `<ProfilePage>` component doesn't need to set up its own:
+このボタンは*どの* state を更新しようとしているのか関知しないということに注意してください。これは `onClick` ハンドラー内部で起こる*あらゆる* state の更新をトランジションにラップしています。`<Button>` がトランジションの作成を行ってくれるようになったので、`<ProfilePage>` コンポーネントは自分で作成しなくて良くなります：
 
 ```js{4-6,11-13}
 function ProfilePage() {
@@ -342,35 +342,35 @@ function ProfilePage() {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/modest-ritchie-iufrh)**
+**[CodeSandbox で試す](https://codesandbox.io/s/modest-ritchie-iufrh)**
 
-When a button gets clicked, it starts a transition and calls `props.onClick()` inside of it -- which triggers `handleRefreshClick` in the `<ProfilePage>` component. We start fetching the fresh data, but it doesn't trigger a fallback because we're inside a transition, and the 10 second timeout specified in the `useTransition` call hasn't passed yet. While a transition is pending, the button displays an inline loading indicator.
+ボタンがクリックされると、トランジションが開始され、内部の `props.onClick()` が呼びされます。それが `<ProfilePage>` コンポーネント内の `handleRefreshClick` をトリガします。新しいデータの取得が開始されますが、トランジションの内部におり、かつ `useTransition` 呼び出しで指定されている 10 秒のタイムアウトがまだ経過していないため、フォールバックは呼び出されません。トランジションが動作している間、ボタンはインラインでローディングインジケータを表示します。
 
-We can see now how Concurrent Mode helps us achieve a good user experience without sacrificing isolation and modularity of components. React coordinates the transition.
+これで、コンポーネントの独立性やモジュール性を犠牲にせずに良いユーザ体験を実現するために、並列モードがどのように役立つのがが分かったと思います。React がトランジションの調整を行うのです。
 
 ## The Three Steps {#the-three-steps}
 
-By now we have discussed all of the different visual states that an update may go through. In this section, we will give them names and talk about the progression between them.
+ここまでで、更新したときに経由する可能性のあるすべての視覚的な状態について説明が終わりました。このセクションでは、それらに名前を付け、それらの間での移行について説明します。
 
 <br>
 
 <img src="../images/docs/cm-steps-simple.png" alt="Three steps" />
 
-At the very end, we have the **Complete** state. That's where we want to eventually get to. It represents the moment when the next screen is fully rendered and isn't loading more data.
+最後に存在しているのは **Complete** 状態です。ここが最終的に到達したい状態です。次の画面が完全に描画されており、それ以上データを読み込んでいない瞬間を表します。
 
-But before our screen can be Complete, we might need to load some data or code. When we're on the next screen, but some parts of it are still loading, we call that a **Skeleton** state.
+しかし画面が Complete になる前に、何らかのデータやコードを読み込む必要があります。次の画面を表示しようとしているが、一部がまだロード中である場合、それを **Skeleton** 状態と呼びます。
 
-Finally, there are two primary ways that lead us to the Skeleton state. We will illustrate the difference between them with a concrete example.
+最後に、Skeleton 状態に至るまでの経路が主に 2 つあります。具体的な例を使ってそれらの違いを述べたいと思います。
 
-### Default: Receded → Skeleton → Complete {#default-receded-skeleton-complete}
+### デフォルト：Receded → Skeleton → Complete {#default-receded-skeleton-complete}
 
-Open [this example](https://codesandbox.io/s/prod-grass-g1lh5) and click "Open Profile". You will see several visual states one by one:
+[この例](https://codesandbox.io/s/prod-grass-g1lh5)を開いて "Open Profile" をクリックしてください。複数の視覚的な状態を 1 つずつ見ることができます。
 
-* **Receded**: For a second, you will see the `<h1>Loading the app...</h1>` fallback.
-* **Skeleton:** You will see the `<ProfilePage>` component with `<h2>Loading posts...</h2>` inside.
-* **Complete:** You will see the `<ProfilePage>` component with no fallbacks inside. Everything was fetched.
+* **Receded**: 1 秒間の間、`<h1>Loading the app...</h1>` フォールバックが表示されます。
+* **Skeleton:** `<ProfilePage>` コンポーネントが表示され、中で `<h2>Loading posts...</h2>` が表示されます。
+* **Complete:** `<ProfilePage>` コンポーネントが表示され、内部のフォールバックも表示されません。すべての取得が完了しています。
 
-How do we separate the Receded and the Skeleton states? The difference between them is that the **Receded** state feels like "taking a step back" to the user, while the **Skeleton** state feels like "taking a step forward" in our progress to show more content.
+Receded（退避）状態と Skeleton 状態はどのように区別するのでしょうか？ これらの違いは、**Receded** 状態はユーザからは「一歩下がっている」ように見え、**Skeleton** 状態はよりコンテンツを見せるため「一歩進んでいる」ように見えるということです。
 
 In this example, we started our journey on the `<HomePage>`:
 
@@ -494,7 +494,7 @@ function ProfileTrivia({ resource }) {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/focused-mountain-uhkzg)**
+**[CodeSandbox で試す](https://codesandbox.io/s/focused-mountain-uhkzg)**
 
 If you press "Open Profile" now, you can tell something is wrong. It takes whole seven seconds to make the transition now! This is because our trivia API is too slow. Let's say we can't make the API faster. How can we improve the user experience with this constraint?
 
@@ -518,7 +518,7 @@ function ProfilePage({ resource }) {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/condescending-shape-s6694)**
+**[CodeSandbox で試す](https://codesandbox.io/s/condescending-shape-s6694)**
 
 This reveals an important insight. React always prefers to go to the Skeleton state as soon as possible. Even if we use transitions with long timeouts everywhere, React will not stay in the Pending state for longer than necessary to avoid the Receded state.
 
@@ -553,7 +553,7 @@ function Button({ children, onClick }) {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/floral-thunder-iy826)**
+**[CodeSandbox で試す](https://codesandbox.io/s/floral-thunder-iy826)**
 
 This signals to the user that some work is happening. However, if the transition is relatively short (less than 500ms), it might be too distracting and make the transition itself feel *slower*.
 
@@ -587,7 +587,7 @@ return (
 );
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/gallant-spence-l6wbk)**
+**[CodeSandbox で試す](https://codesandbox.io/s/gallant-spence-l6wbk)**
 
 With this change, even though we're in the Pending state, we don't display any indication to the user until 500ms has passed. This may not seem like much of an improvement when the API responses are slow. But compare how it feels [before](https://codesandbox.io/s/thirsty-liskov-1ygph) and [after](https://codesandbox.io/s/hardcore-http-s18xr) when the API call is fast. Even though the rest of the code hasn't changed, suppressing a "too fast" loading state improves the perceived performance by not calling attention to the delay.
 
@@ -647,7 +647,7 @@ function Translation({ resource }) {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/brave-villani-ypxvf)**
+**[CodeSandbox で試す](https://codesandbox.io/s/brave-villani-ypxvf)**
 
 Notice how when you type into the input, the `<Translation>` component suspends, and we see the `<p>Loading...</p>` fallback until we get fresh results. This is not ideal. It would be better if we could see the *previous* translation for a bit while we're fetching the next one.
 
@@ -684,7 +684,7 @@ function App() {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/zen-keldysh-rifos)**
+**[CodeSandbox で試す](https://codesandbox.io/s/zen-keldysh-rifos)**
 
 Try typing into the input now. Something's wrong! The input is updating very slowly.
 
@@ -710,7 +710,7 @@ function handleChange(e) {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/lively-smoke-fdf93)**
+**[CodeSandbox で試す](https://codesandbox.io/s/lively-smoke-fdf93)**
 
 With this change, it works as expected. We can type into the input immediately, and the translation later "catches up" to what we have typed.
 
@@ -775,7 +775,7 @@ function ProfileTimeline({ isStale, resource }) {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/vigorous-keller-3ed2b)**
+**[CodeSandbox で試す](https://codesandbox.io/s/vigorous-keller-3ed2b)**
 
 The tradeoff we're making here is that `<ProfileTimeline>` will be inconsistent with other components and potentially show an older item. Click "Next" a few times, and you'll notice it. But thanks to that, we were able to cut down the transition time from 1000ms to 300ms.
 
@@ -806,7 +806,7 @@ function App() {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/pensive-shirley-wkp46)**
+**[CodeSandbox で試す](https://codesandbox.io/s/pensive-shirley-wkp46)**
 
 In this example, **every item in `<MySlowList>` has an artificial slowdown -- each of them blocks the thread for a few milliseconds**. We'd never do this in a real app, but this helps us simulate what can happen in a deep component tree with no single obvious place to optimize.
 
@@ -836,7 +836,7 @@ function App() {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/infallible-dewdney-9fkv9)**
+**[CodeSandbox で試す](https://codesandbox.io/s/infallible-dewdney-9fkv9)**
 
 Now typing has a lot less stutter -- although we pay for this by showing the results with a lag.
 
@@ -866,7 +866,7 @@ function ProfilePage({ resource }) {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/proud-tree-exg5t)**
+**[CodeSandbox で試す](https://codesandbox.io/s/proud-tree-exg5t)**
 
 The API call duration in this example is randomized. If you keep refreshing it, you will notice that sometimes the posts arrive first, and sometimes the "fun facts" arrive first.
 
@@ -881,7 +881,7 @@ One way we could fix it is by putting them both in a single boundary:
 </Suspense>
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/currying-violet-5jsiy)**
+**[CodeSandbox で試す](https://codesandbox.io/s/currying-violet-5jsiy)**
 
 The problem with this is that now we *always* wait for both of them to be fetched. However, if it's the *posts* that came back first, there's no reason to delay showing them. When fun facts load later, they won't shift the layout because they're already below the posts.
 
@@ -911,7 +911,7 @@ function ProfilePage({ resource }) {
 }
 ```
 
-**[Try it on CodeSandbox](https://codesandbox.io/s/black-wind-byilt)**
+**[CodeSandbox で試す](https://codesandbox.io/s/black-wind-byilt)**
 
 The `revealOrder="forwards"` option means that the closest `<Suspense>` nodes inside this list **will only "reveal" their content in the order they appear in the tree -- even if the data for them arrives in a different order**. `<SuspenseList>` has other interesting modes: try changing `"forwards"` to `"backwards"` or `"together"` and see what happens.
 
